@@ -11,6 +11,8 @@ import numpy as np
 from scipy.sparse import coo_matrix
 import sys
 import os
+import subprocess
+import shlex
 
 
 class TMscoreDB(object):
@@ -48,6 +50,23 @@ class TMscoreDB(object):
                     datapoint = []
         self.format()
 
+    def readfile(self, recfilename):
+        inlist = []
+        with open(recfilename, 'r') as recfile:
+            traintest = {}
+            for line in recfile:
+                splitout = line.split(':')
+                if splitout[0] == 'train':
+                    train = splitout[1].strip()
+                    traintest['train'] = train
+                if splitout[0] == 'test':
+                    test = splitout[1].strip()
+                    traintest['test'] = test
+                if splitout[0] == '\n':
+                    inlist.append(traintest)
+                    traintest = {}
+        return inlist
+
     def add(self, datapoint: list):
         """add.
 
@@ -74,6 +93,26 @@ class TMscoreDB(object):
         self.rows.append(self.train_ind[train])
         self.cols.append(self.test_ind[test])
         self.data.append(tmscore)
+        print(f'{test} {train} {tmscore:.4f}')
+
+    def compute(self, test: str, train: str):
+        """
+        Compute TM-score for the given train and test pdb files
+        """
+        train_check = False
+        test_check = False
+        if train in self.train_ind:
+            train_check = True
+        if test in self.test_ind:
+            test_check = True
+        if not train_check or not test_check:
+            process = subprocess.Popen('TMscore %s %s | grep "TM-score    =" | awk \'{print $3}\'' % (test, train), stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            stdout, stderr = process.communicate()
+            try:
+                tmscore = float(stdout)
+            except ValueError:
+                tmscore = 0.
+        return [train, test, tmscore]
 
     def format(self):
         n, p = max(self.rows) + 1, max(self.cols) + 1
@@ -181,6 +220,9 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--filter', type=str, help='Filter the database with the given test file containing one couple "train_key test_key" per line')
     parser.add_argument('-k', '--keys', action='store_true', help='Print the keys along with the data')
     parser.add_argument('--format', action='store_true', help='Reformat the keys such as HD-database/1/5/c/8/15c8-LH-P01837-P01869-H.pdb -> 15c8-LH-P01837-P01869-H.pdb')
+    parser.add_argument('--test', type=str, help='Compute the TM-score between test and train (required)', default=None)
+    parser.add_argument('--train', type=str, help='Compute the TM-score between test and train (required)', default=None)
+    parser.add_argument('--file', type=str, help='Read test and train from a rec file with test and train fields')
     args = parser.parse_args()
 
     def test_out():
@@ -188,16 +230,27 @@ if __name__ == '__main__':
             print("Please give on output filename with the --out option e.g.: '--out tmscore.pickle'")
             sys.exit(1)
 
+    if args.db is not None:
+        tmscoredb = pickle.load(open(args.db, 'rb'))
+    else:
+        tmscoredb = TMscoreDB()
+    if args.test is not None and args.train is not None:
+        datapoint = tmscoredb.compute(args.test, args.train)
+        tmscoredb.add(datapoint)
+    if args.file is not None:
+        inlist = tmscoredb.readfile(args.file)
+        for traintest in inlist:
+            train = traintest['train']
+            test = traintest['test']
+            datapoint = tmscoredb.compute(test, train)
+            tmscoredb.add(datapoint)
     if args.rec is not None:
         test_out()
         tmscoredb = TMscoreDB(recfilename=args.rec)
-        pickle.dump(tmscoredb, open(args.out, 'wb'))
     if args.db is not None:
-        tmscoredb = pickle.load(open(args.db, 'rb'))
         if args.format:
             test_out()
             tmscoredb.reformat_keys()
-            pickle.dump(tmscoredb, open(args.out, 'wb'))
         if args.print:
             tmscoredb.print()
         if args.max:
@@ -211,4 +264,5 @@ if __name__ == '__main__':
             train = traintest[:, 0]
             test = traintest[:, 1]
             tmscoredb.filter(train, test)
-            pickle.dump(tmscoredb, open(args.out, 'wb'))
+    if args.out is not None:
+        pickle.dump(tmscoredb, open(args.out, 'wb'))
