@@ -244,6 +244,7 @@ if __name__ == '__main__':
             test = traintest['test']
             datapoint = tmscoredb.compute(test, train)
             tmscoredb.add(datapoint)
+        tmscoredb.format()
     if args.rec is not None:
         test_out()
         tmscoredb = TMscoreDB(recfilename=args.rec)
