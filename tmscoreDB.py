@@ -56,12 +56,12 @@ class TMscoreDB(object):
             traintest = {}
             for line in recfile:
                 splitout = line.split(':')
-                if splitout[0] == 'train':
+                if splitout[0] == 'ref':
                     train = splitout[1].strip()
-                    traintest['train'] = train
-                if splitout[0] == 'test':
+                    traintest['ref'] = train
+                if splitout[0] == 'model':
                     test = splitout[1].strip()
-                    traintest['test'] = test
+                    traintest['model'] = test
                 if splitout[0] == '\n':
                     inlist.append(traintest)
                     traintest = {}
@@ -220,9 +220,9 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--filter', type=str, help='Filter the database with the given test file containing one couple "train_key test_key" per line')
     parser.add_argument('-k', '--keys', action='store_true', help='Print the keys along with the data')
     parser.add_argument('--format', action='store_true', help='Reformat the keys such as HD-database/1/5/c/8/15c8-LH-P01837-P01869-H.pdb -> 15c8-LH-P01837-P01869-H.pdb')
-    parser.add_argument('--test', type=str, help='Compute the TM-score between test and train (required)', default=None)
-    parser.add_argument('--train', type=str, help='Compute the TM-score between test and train (required)', default=None)
-    parser.add_argument('--file', type=str, help='Read test and train from a rec file with test and train fields')
+    parser.add_argument('--model', type=str, help='Compute the TM-score between model and ref (required)', default=None)
+    parser.add_argument('--ref', type=str, help='Compute the TM-score between model and ref (required)', default=None)
+    parser.add_argument('--file', type=str, help='Read test and train from a rec file with model and ref fields')
     args = parser.parse_args()
 
     def test_out():
@@ -234,14 +234,14 @@ if __name__ == '__main__':
         tmscoredb = pickle.load(open(args.db, 'rb'))
     else:
         tmscoredb = TMscoreDB()
-    if args.test is not None and args.train is not None:
-        datapoint = tmscoredb.compute(args.test, args.train)
+    if args.model is not None and args.ref is not None:
+        datapoint = tmscoredb.compute(args.model, args.ref)
         tmscoredb.add(datapoint)
     if args.file is not None:
         inlist = tmscoredb.readfile(args.file)
         for traintest in inlist:
-            train = traintest['train']
-            test = traintest['test']
+            train = traintest['ref']
+            test = traintest['model']
             datapoint = tmscoredb.compute(test, train)
             tmscoredb.add(datapoint)
         tmscoredb.format()
