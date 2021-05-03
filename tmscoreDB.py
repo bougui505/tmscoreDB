@@ -180,7 +180,7 @@ class TMscoreDB(object):
         j = self.test_ind[test]
         return self.data[i, j]
 
-    def print(self, getmax: bool = False, print_keys: bool = False):
+    def print(self, getmax: bool = False, print_keys: bool = False, max_axis=1):
         """print.
 
         :param getmax:
@@ -195,7 +195,7 @@ class TMscoreDB(object):
         if not getmax:
             toprint = self.data.flatten()
         else:
-            toprint = self.data.max(axis=1).flatten()
+            toprint = self.data.max(axis=max_axis).flatten()
         if print_keys:
             train_keys = sort_keys(self.train_ind)
             test_keys = sort_keys(self.test_ind)
@@ -216,6 +216,7 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--db', type=str, default=None, help='Load the given db pickle file')
     parser.add_argument('-p', '--print', action='store_true', help='Print all the data in the db')
     parser.add_argument('-m', '--max', action='store_true', help='Print the max over axis 1 of the data in the db')
+    parser.add_argument('--max_axis', type=int, default=1, help='Axis to take the maximum value over')
     parser.add_argument('-g', '--get', nargs=2, type=str, help='Get the data for the given train, test couple')
     parser.add_argument('-f', '--filter', type=str, help='Filter the database with the given test file containing one couple "train_key test_key" per line')
     parser.add_argument('-k', '--keys', action='store_true', help='Print the keys along with the data')
@@ -255,7 +256,7 @@ if __name__ == '__main__':
         if args.print:
             tmscoredb.print()
         if args.max:
-            tmscoredb.print(getmax=True, print_keys=args.keys)
+            tmscoredb.print(getmax=True, print_keys=args.keys, max_axis=args.max_axis)
         if args.get is not None:
             data = tmscoredb.get(train=args.get[0], test=args.get[1])
             print(f'{data:.4f}')
